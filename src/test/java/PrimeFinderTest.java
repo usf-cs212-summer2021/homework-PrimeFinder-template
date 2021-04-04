@@ -38,7 +38,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 @TestMethodOrder(MethodName.class)
 public class PrimeFinderTest {
 	/** Maximum amount of time to wait per test. */
-	public static final Duration GLOBAL_TIMEOUT = Duration.ofSeconds(60);
+	public static final Duration GLOBAL_TIMEOUT = Duration.ofSeconds(120);
 
 	/** Number of warmup rounds to run when benchmarking. */
 	public static final int WARMUP_ROUNDS = 10;
