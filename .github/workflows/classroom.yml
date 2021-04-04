@@ -1,0 +1,144 @@
+name: GitHub Classroom Workflow
+
+# the autograder action does not have access to environment variables
+# the autograder action does not seem to use the maven cache
+# notice annotations not shown in summary; using warning instead
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  # standard autograder java setup
+  # separate job so status of autograder affects status of job
+  # without having to use continue-on-error and allowing concurrent followup jobs
+  build:
+    name: Autograding
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      points: ${{ steps.autograder.outputs.points }}
+      outcome: ${{ steps.autograder.outcome }}
+
+    steps:
+      - name: Checkout Homework Repository
+        uses: actions/checkout@v2
+
+      - name: Setup Homework Test Environment
+        uses: usf-cs212-spring2021/action-homework-setup@main
+
+      - name: Setup Java JDK 15
+        uses: actions/setup-java@v1
+        with:
+          java-version: 15
+
+      - name: Run Autograder
+        id: autograder
+        uses: education/autograding@v1
+
+  # prepare output based on autograder outcome
+  # allows for creation of badges and annotations
+  status:
+    name: Generate Status
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    if: always()
+    needs: build
+    outputs:
+      title: ${{ steps.results.outputs.title }}
+      summary: ${{ steps.results.outputs.summary }}
+      outcome: ${{ steps.results.outputs.outcome }}
+      level: ${{ steps.results.outputs.level }}
+      color: ${{ steps.results.outputs.color }}
+
+    steps:
+      - name: Check Status
+        id: results
+        run: |
+          title="${{ needs.build.outputs.points }} Points"
+          summary="Points: ${{ needs.build.outputs.points }}."
+          outcome="${{ needs.build.outputs.outcome }}"
+          level="warning"
+          color="e3b341"
+
+          if [[ $outcome == "success" ]]; then
+            level="warning"
+            color="2ea043"
+            summary="${summary} All tests passed!"
+          elif [[ $outcome == "failure" ]]; then
+            level="failure"
+            color="f85149"
+            summary="${summary} One or more tests failed."
+          else
+            summary="${summary} One or more issues encountered."
+          fi
+
+          summary="${summary} See the \"Run Autograder\" step of the \"Autograder Details\" job for more information."
+
+          echo "::set-output name=title::$title"
+          echo "::set-output name=summary::$summary"
+          echo "::set-output name=outcome::$outcome"
+          echo "::set-output name=level::$level"
+          echo "::set-output name=color::$color"
+
+  # make points badge for readme
+  # https://education.github.community/t/autograder-score-on-readme/66289/2
+  # https://github.com/emibcn/badge-action/tree/master#commit-the-changes-to-dedicated-branch
+
+  badge:
+    name: Generate Points Badge
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    if: always()
+    needs: [status, build]
+
+    steps:
+      - name: Checkout Homework Repository
+        uses: actions/checkout@v2
+        with:
+          ref: 'badges'
+
+      - name: Checkout Badges Branch
+        run: |
+          git rm --cached $(git ls-files)
+          echo "# Badges branch" > README.md
+          echo "![Points](points.svg)" >> README.md
+
+      - name: Generate Points Badge
+        uses: emibcn/badge-action@v1
+        with:
+          label: 'Points'
+          status: '${{ needs.build.outputs.points }}'
+          color: '${{ needs.status.outputs.color }}'
+          path: 'points.svg'
+
+      - name: Push Points Badge
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add points.svg
+          git add README.md
+          git commit --allow-empty -m "Updated points badge"
+          git push origin badges --force
+
+  # add annotation to action summary
+  # https://github.com/usf-cs212-spring2021/action-add-annotation
+  # https://octokit.github.io/rest.js/v18#checks-create
+
+  annotate:
+    name: Generate Annotation
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    if: always()
+    needs: status
+
+    steps:
+      - name: Add Annotation
+        uses: usf-cs212-spring2021/action-add-annotation@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: 'Autograding Status'
+          title: '${{ needs.status.outputs.title }}'
+          summary: '${{ needs.status.outputs.summary }}'
+          conclusion: '${{ needs.status.outputs.outcome }}'
+          level: '${{ needs.status.outputs.level }}'
