@@ -225,7 +225,7 @@ public class PrimeFinderTest {
 			int tasks = 10;
 			int sleep = 10;
 			int workers = tasks / 2;
-			long timeout = Math.round(workers * sleep * 1.25);
+			long timeout = Math.round(workers * sleep * 1.5);
 
 			Assertions.assertTimeoutPreemptively(Duration.ofMillis(timeout), () -> {
 				WorkQueue queue = new WorkQueue(workers);
