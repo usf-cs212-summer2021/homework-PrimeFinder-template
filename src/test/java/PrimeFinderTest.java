@@ -38,7 +38,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 @TestMethodOrder(MethodName.class)
 public class PrimeFinderTest {
 	/** Maximum amount of time to wait per test. */
-	public static final Duration GLOBAL_TIMEOUT = Duration.ofSeconds(120);
+	public static final Duration GLOBAL_TIMEOUT = Duration.ofSeconds(60);
 
 	/** Number of warmup rounds to run when benchmarking. */
 	public static final int WARMUP_ROUNDS = 10;
@@ -225,9 +225,8 @@ public class PrimeFinderTest {
 			int tasks = 10;
 			int sleep = 10;
 			int workers = tasks / 2;
-			long timeout = Math.round(workers * sleep * 2);
 
-			Assertions.assertTimeoutPreemptively(Duration.ofMillis(timeout), () -> {
+			Assertions.assertTimeoutPreemptively(GLOBAL_TIMEOUT, () -> {
 				WorkQueue queue = new WorkQueue(workers);
 				CountDownLatch count = new CountDownLatch(tasks);
 
@@ -268,7 +267,7 @@ public class PrimeFinderTest {
 			Assertions.assertTimeoutPreemptively(GLOBAL_TIMEOUT, () -> {
 				List<String> start = activeThreads();
 
-				PrimeFinder.findPrimes(500, 3);
+				PrimeFinder.findPrimes(1000, 3);
 				Thread.sleep(500); // short pause for threads to shutdown (not necessary if joining properly)
 
 				List<String> end = activeThreads();
@@ -340,8 +339,12 @@ public class PrimeFinderTest {
 		Thread[] threads = new Thread[active * 2]; // make sure large enough
 		Thread.enumerate(threads);
 		return Arrays.stream(threads)
-				.filter(t -> t != null)
-				.map(t -> t.getName())
+				// remove null values
+				.filter(thread -> thread != null)
+				// only keep the thread name
+				.map(Thread::getName)
+				// remove threads used internally by junit and surefire
+				.filter(name -> !name.startsWith("junit") && !name.startsWith("surefire"))
 				.collect(Collectors.toList());
 	}
 
