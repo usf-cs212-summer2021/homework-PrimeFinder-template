@@ -225,7 +225,7 @@ public class PrimeFinderTest {
 			int tasks = 10;
 			int sleep = 10;
 			int workers = tasks / 2;
-			long timeout = Math.round(workers * sleep * 1.5);
+			long timeout = Math.round(workers * sleep * 2);
 
 			Assertions.assertTimeoutPreemptively(Duration.ofMillis(timeout), () -> {
 				WorkQueue queue = new WorkQueue(workers);
@@ -268,7 +268,7 @@ public class PrimeFinderTest {
 			Assertions.assertTimeoutPreemptively(GLOBAL_TIMEOUT, () -> {
 				List<String> start = activeThreads();
 
-				PrimeFinder.findPrimes(1000, 3);
+				PrimeFinder.findPrimes(500, 3);
 				Thread.sleep(500); // short pause for threads to shutdown (not necessary if joining properly)
 
 				List<String> end = activeThreads();
