@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.Level;
@@ -20,8 +21,14 @@ import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.platform.engine.discovery.DiscoverySelectors;
+import org.junit.platform.launcher.TagFilter;
+import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
+import org.junit.platform.launcher.core.LauncherFactory;
+import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
 
 /**
  * Attempts to test if {@link PrimeFinder#findPrimes(int, int)} and
@@ -33,31 +40,10 @@ import org.junit.jupiter.api.TestMethodOrder;
  * 
  * @author CS 212 Software Development
  * @author University of San Francisco
- * @version Spring 2021
+ * @version Summer 2021
  */
 @TestMethodOrder(MethodName.class)
 public class PrimeFinderTest {
-	/** Maximum amount of time to wait per test. */
-	public static final Duration GLOBAL_TIMEOUT = Duration.ofSeconds(60);
-
-	/** Number of warmup rounds to run when benchmarking. */
-	public static final int WARMUP_ROUNDS = 10;
-
-	/** Number of timed rounds to run when benchmarking. */
-	public static final int TIMED_ROUNDS = 20;
-
-	/**
-	 * Hard-coded set of known primes to compare against.
-	 */
-	public static final Set<Integer> KNOWN_PRIMES = Set.of(2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59,
-			61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179,
-			181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311,
-			313, 317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419, 421, 431, 433, 439, 443, 449,
-			457, 461, 463, 467, 479, 487, 491, 499, 503, 509, 521, 523, 541, 547, 557, 563, 569, 571, 577, 587, 593, 599, 601,
-			607, 613, 617, 619, 631, 641, 643, 647, 653, 659, 661, 673, 677, 683, 691, 701, 709, 719, 727, 733, 739, 743, 751,
-			757, 761, 769, 773, 787, 797, 809, 811, 821, 823, 827, 829, 839, 853, 857, 859, 863, 877, 881, 883, 887, 907, 911,
-			919, 929, 937, 941, 947, 953, 967, 971, 977, 983, 991, 997);
-
 	/**
 	 * Tests the results are consistently correct for different numbers of threads.
 	 */
@@ -283,6 +269,7 @@ public class PrimeFinderTest {
 	/**
 	 * Poor attempts to verify the approach is correct.
 	 */
+	@Tag("approach")
 	@Nested
 	@TestMethodOrder(OrderAnnotation.class)
 	public class F_ApproachTests {
@@ -327,25 +314,31 @@ public class PrimeFinderTest {
 			String source = Files.readString(path, StandardCharsets.UTF_8);
 			Assertions.assertFalse(source.contains("TaskManager"));
 		}
-	}
+		
+		/**
+		 * Causes this group of tests to fail if the other non-approach tests are
+		 * not yet passing.
+		 */
+		@Test
+		@Order(4)
+		public void testOthersPassing() {
+			var request = LauncherDiscoveryRequestBuilder.request()
+					.selectors(DiscoverySelectors.selectClass(PrimeFinderTest.class))
+					.filters(TagFilter.excludeTags("approach"))
+					.build();
 
-	/**
-	 * Returns a list of the active thread names (approximate).
-	 *
-	 * @return list of active thread names
-	 */
-	public static List<String> activeThreads() {
-		int active = Thread.activeCount(); // only an estimate
-		Thread[] threads = new Thread[active * 2]; // make sure large enough
-		Thread.enumerate(threads);
-		return Arrays.stream(threads)
-				// remove null values
-				.filter(thread -> thread != null)
-				// only keep the thread name
-				.map(Thread::getName)
-				// remove threads used internally by junit and surefire
-				.filter(name -> !name.startsWith("junit") && !name.startsWith("surefire"))
-				.collect(Collectors.toList());
+			var launcher = LauncherFactory.create();
+			var listener = new SummaryGeneratingListener();
+
+			Logger logger = Logger.getLogger("org.junit.platform.launcher");
+			logger.setLevel(java.util.logging.Level.SEVERE);
+
+			launcher.registerTestExecutionListeners(listener);
+			launcher.execute(request);
+
+			Assertions.assertEquals(0, listener.getSummary().getTotalFailureCount(),
+					"Must pass other tests to earn credit for approach group!");
+		}
 	}
 
 	/**
@@ -433,4 +426,44 @@ public class PrimeFinderTest {
 			}
 		}
 	}
+	
+	/**
+	 * Returns a list of the active thread names (approximate).
+	 *
+	 * @return list of active thread names
+	 */
+	public static List<String> activeThreads() {
+		int active = Thread.activeCount(); // only an estimate
+		Thread[] threads = new Thread[active * 2]; // make sure large enough
+		Thread.enumerate(threads);
+		return Arrays.stream(threads)
+				// remove null values
+				.filter(thread -> thread != null)
+				// only keep the thread name
+				.map(Thread::getName)
+				// remove threads used internally by junit and surefire
+				.filter(name -> !name.startsWith("junit") && !name.startsWith("surefire"))
+				.collect(Collectors.toList());
+	}
+
+	/** Maximum amount of time to wait per test. */
+	public static final Duration GLOBAL_TIMEOUT = Duration.ofSeconds(60);
+
+	/** Number of warmup rounds to run when benchmarking. */
+	public static final int WARMUP_ROUNDS = 10;
+
+	/** Number of timed rounds to run when benchmarking. */
+	public static final int TIMED_ROUNDS = 20;
+
+	/**
+	 * Hard-coded set of known primes to compare against.
+	 */
+	public static final Set<Integer> KNOWN_PRIMES = Set.of(2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59,
+			61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179,
+			181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311,
+			313, 317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419, 421, 431, 433, 439, 443, 449,
+			457, 461, 463, 467, 479, 487, 491, 499, 503, 509, 521, 523, 541, 547, 557, 563, 569, 571, 577, 587, 593, 599, 601,
+			607, 613, 617, 619, 631, 641, 643, 647, 653, 659, 661, 673, 677, 683, 691, 701, 709, 719, 727, 733, 739, 743, 751,
+			757, 761, 769, 773, 787, 797, 809, 811, 821, 823, 827, 829, 839, 853, 857, 859, 863, 877, 881, 883, 887, 907, 911,
+			919, 929, 937, 941, 947, 953, 967, 971, 977, 983, 991, 997);
 }

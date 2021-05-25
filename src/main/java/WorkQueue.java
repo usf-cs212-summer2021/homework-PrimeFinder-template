@@ -17,7 +17,7 @@ import org.apache.logging.log4j.Logger;
  * 
  * @author CS 212 Software Development
  * @author University of San Francisco
- * @version Spring 2021
+ * @version Summer 2021
  */
 public class WorkQueue {
 	// TODO Modify existing methods if necessary.
@@ -58,8 +58,7 @@ public class WorkQueue {
 	public WorkQueue(int threads) {
 		this.queue = new LinkedList<Runnable>();
 		this.workers = new Worker[threads];
-
-		shutdown = false;
+		this.shutdown = false;
 
 		// start the threads so they are waiting in the background
 		for (int i = 0; i < threads; i++) {
@@ -112,21 +111,21 @@ public class WorkQueue {
 	 * this call completes.
 	 */
 	public void join() {
-		finish();
-		shutdown();
-		
-		for (Worker worker : workers) {
-			try {
+		try {
+			finish();
+			shutdown();
+
+			for (Worker worker : workers) {
 				worker.join();
 			}
-			catch (InterruptedException e) {
-				System.err.println("Warning: Work queue interrupted while joining.");
-				log.catching(Level.DEBUG, e);
-				Thread.currentThread().interrupt();
-			}
+			
+			log.debug("All worker threads terminated.");
 		}
-		
-		log.debug("All worker threads terminated.");
+		catch (InterruptedException e) {
+			System.err.println("Warning: Work queue interrupted while joining.");
+			log.catching(Level.DEBUG, e);
+			Thread.currentThread().interrupt();
+		}
 	}
 
 	/**
@@ -156,41 +155,43 @@ public class WorkQueue {
 		public void run() {
 			Runnable task = null;
 
-			while (true) {
-				synchronized (queue) {
-					while (queue.isEmpty() && !shutdown) {
-						try {
+			try {
+				while (true) {
+					synchronized (queue) {
+						while (queue.isEmpty() && !shutdown) {
 							log.debug("Work queue worker waiting...");
 							queue.wait();
 						}
-						catch (InterruptedException e) {
-							System.err.println("Warning: Work queue interrupted while waiting.");
-							log.catching(Level.DEBUG, e);
-							Thread.currentThread().interrupt();
+
+						// exit while for one of two reasons:
+						// (a) queue has work, or (b) shutdown has been called
+	
+						if (shutdown) {
+							log.debug("Worker detected shutdown...");
+							break;
+						}
+						else {
+							task = queue.removeFirst();
 						}
 					}
 
-					// exit while for one of two reasons:
-					// (a) queue has work, or (b) shutdown has been called
-
-					if (shutdown) {
-						log.debug("Work queue worker shutting down...");
-						break;
+					try {
+						log.debug("Work queue worker found work.");
+						task.run();
 					}
-					else {
-						task = queue.removeFirst();
+					catch (RuntimeException e) {
+						// catch runtime exceptions to avoid leaking threads
+						System.err.println("Warning: Work queue encountered an exception while running.");
+						log.catching(Level.DEBUG, e);
 					}
 				}
-
-				try {
-					log.debug("Work queue worker found work.");
-					task.run();
-				}
-				catch (RuntimeException e) {
-					// catch runtime exceptions to avoid leaking threads
-					System.err.println("Warning: Work queue encountered an exception while running.");
-					log.catching(Level.DEBUG, e);
-				}
+				
+				log.debug("Worker thread terminating...");
+			}
+			catch (InterruptedException e) {
+				System.err.println("Warning: Worker thread interrupted while waiting.");
+				log.catching(Level.DEBUG, e);
+				Thread.currentThread().interrupt();
 			}
 		}
 	}

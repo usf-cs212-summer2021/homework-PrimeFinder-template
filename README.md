@@ -18,9 +18,3 @@ Below are some hints that may help with this homework assignment:
   - Do not try to use lambda expressions or streams here, since data must be mutated outside of a thread's scope.
 
 These hints are *optional*. There may be multiple approaches to solving this homework.
-
-## Requirements ##
-
-See the Javadoc and `TODO` comments in the template code in the `src/main/java` directory for additional details. You must pass the tests provided in the `src/test/java` directory. Do not modify any of the files in the `src/test` directory.
-
-See the [Homework Guides](https://usf-cs212-spring2021.github.io/guides/homework/) for additional details on homework requirements and submission.
