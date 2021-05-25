@@ -37,7 +37,7 @@ import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
  *
  * @see PrimeFinder#findPrimes(int, int)
  * @see WorkQueue#finish()
- * 
+ *
  * @author CS 212 Software Development
  * @author University of San Francisco
  * @version Summer 2021
@@ -139,6 +139,7 @@ public class PrimeFinderTest {
 	/**
 	 * Benchmarks the multithreading code.
 	 */
+	@Tag("approach")
 	@Nested
 	@TestMethodOrder(OrderAnnotation.class)
 	public class C_SingleVersusMultiBenchmarks {
@@ -170,6 +171,7 @@ public class PrimeFinderTest {
 	/**
 	 * Benchmarks the multithreading code.
 	 */
+	@Tag("approach")
 	@Nested
 	@TestMethodOrder(OrderAnnotation.class)
 	public class D_OneVersusThreeBenchmarks {
@@ -314,7 +316,7 @@ public class PrimeFinderTest {
 			String source = Files.readString(path, StandardCharsets.UTF_8);
 			Assertions.assertFalse(source.contains("TaskManager"));
 		}
-		
+
 		/**
 		 * Causes this group of tests to fail if the other non-approach tests are
 		 * not yet passing.
@@ -426,7 +428,7 @@ public class PrimeFinderTest {
 			}
 		}
 	}
-	
+
 	/**
 	 * Returns a list of the active thread names (approximate).
 	 *
